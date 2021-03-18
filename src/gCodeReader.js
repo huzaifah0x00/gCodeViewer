@@ -4,6 +4,8 @@
  * Time: 7:31 AM
  */
 
+import { parseGCode } from "./Worker.js";
+
 export default function gCodeReader() {
   // ***** PRIVATE ******
   let gcode;
@@ -194,56 +196,34 @@ export default function gCodeReader() {
 
   // ***** PUBLIC *******
   return {
-    loadFile(reader) {
-      //            console.log("loadFile");
+    loadFile(gcodeFileText) {
       model = [];
       z_heights = [];
-      detectSlicer(reader.target.result);
-      lines = reader.target.result.split(/\n/);
-      reader.target.result = null;
-      //            prepareGCode();
-
-      GCODE.ui.worker.postMessage({
-        cmd: "parseGCode",
-        msg: {
-          gcode: lines,
-          options: {
-            firstReport: 5,
-          },
-        },
-      });
-      // delete lines;
+      detectSlicer(gcodeFileText);
+      lines = gcodeFileText.split(/\n/);
+      return parseGCode(lines);
     },
+
     setOption(options) {
       for (const opt in options) {
         gCodeOptions[opt] = options[opt];
       }
     },
     passDataToRenderer() {
-      //                        console.log(model);
       if (gCodeOptions.sortLayers) sortLayers();
-      //            console.log(model);
       if (gCodeOptions.purgeEmptyLayers) purgeLayers();
-      //            console.log(model);
       GCODE.renderer.doRender(model, 0);
       GCODE.renderer3d.setModel(model);
     },
     processLayerFromWorker(msg) {
-      //            var cmds = msg.cmds;
-      //            var layerNum = msg.layerNum;
-      //            var zHeightObject = msg.zHeightObject;
-      //            var isEmpty = msg.isEmpty;
-      //            console.log(zHeightObject);
       model[msg.layerNum] = msg.cmds;
       z_heights[msg.zHeightObject.zValue] = msg.zHeightObject.layer;
-      //            GCODE.renderer.doRender(model, msg.layerNum);
     },
     processMultiLayerFromWorker(msg) {
       for (let i = 0; i < msg.layerNum.length; i++) {
         model[msg.layerNum[i]] = msg.model[msg.layerNum[i]];
         z_heights[msg.zHeightObject.zValue[i]] = msg.layerNum[i];
       }
-      //            console.log(model);
     },
     processAnalyzeModelDone(msg) {
       min = msg.min;

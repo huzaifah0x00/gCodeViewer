@@ -4,117 +4,23 @@
  * Time: 12:18 PM
  */
 
-let gcode;
-let firstReport;
-let z_heights = {};
-let model = [];
 const gCodeOptions = {
   sortLayers: false,
   purgeEmptyLayers: true,
   analyzeModel: false,
 };
 // Only print move speeds will be considered in max.speed and min.speed
-let max = {
-  x: undefined,
-  y: undefined,
-  z: undefined,
-  speed: undefined,
-  volSpeed: undefined,
-  extrSpeed: undefined,
-};
-let min = {
-  x: undefined,
-  y: undefined,
-  z: undefined,
-  speed: undefined,
-  volSpeed: undefined,
-  extrSpeed: undefined,
-};
-let modelSize = { x: undefined, y: undefined, z: undefined };
-let filamentByLayer = {};
-let filamentByExtruder = {};
-let totalFilament = 0;
-let printTime = 0;
-let printTimeByLayer = {};
-let layerHeight = 0;
-let layerCnt = 0;
-let speeds = { extrude: [], retract: [], move: [] };
-let speedsByLayer = { extrude: {}, retract: {}, move: {} };
-const volSpeeds = [];
-let volSpeedsByLayer = {};
-const extrusionSpeeds = [];
-let extrusionSpeedsByLayer = {};
-
-const sendLayerToParent = function (layerNum, z, progress) {
-  self.postMessage({
-    cmd: "returnLayer",
-    msg: {
-      cmds: model[layerNum],
-      layerNum,
-      zHeightObject: { zValue: z, layer: z_heights[z] },
-      isEmpty: false,
-      progress,
-    },
-  });
-};
-
-const sendMultiLayerToParent = function (layerNum, z, progress) {
-  const tmpModel = [];
-  const tmpZHeight = {};
-
-  for (let i = 0; i < layerNum.length; i++) {
-    tmpModel[layerNum[i]] = model[layerNum[i]];
-    tmpZHeight[layerNum[i]] = z_heights[z[i]];
-  }
-
-  self.postMessage({
-    cmd: "returnMultiLayer",
-    msg: {
-      model: tmpModel,
-      layerNum,
-      zHeightObject: { zValue: z, layer: tmpZHeight },
-      isEmpty: false,
-      progress,
-    },
-  });
-};
 
 const sendSizeProgress = function (progress) {
-  self.postMessage({
-    cmd: "analyzeProgress",
-    msg: {
-      progress,
-      printTime,
-    },
-  });
+  console.log(`sendSizeProgress Called: with progress: ${progress}`);
 };
 
 const sendAnalyzeDone = function () {
-  self.postMessage({
-    cmd: "analyzeDone",
-    msg: {
-      max,
-      min,
-      modelSize,
-      totalFilament,
-      filamentByLayer,
-      filamentByExtruder,
-      printTime,
-      layerHeight,
-      layerCnt,
-      layerTotal: model.length,
-      speeds,
-      speedsByLayer,
-      volSpeeds,
-      volSpeedsByLayer,
-      printTimeByLayer,
-      extrusionSpeeds,
-      extrusionSpeedsByLayer,
-    },
-  });
+  console.log("sendAnalyzeDONE");
 };
 
-const purgeLayers = function () {
+const purgeLayers = function (model, layerCnt) {
+  // What does this function do?
   let purge = true;
   for (let i = 0; i < model.length; i++) {
     purge = true;
@@ -128,10 +34,9 @@ const purgeLayers = function () {
       layerCnt += 1;
     }
   }
-  //        self.postMessage('LayerCnt: ' + layerCnt);
 };
 
-const analyzeModel = function () {
+const analyzeModel = function (model) {
   let i;
   let j;
   let x_ok = false;
@@ -142,11 +47,38 @@ const analyzeModel = function () {
   let speedIndex = 0;
   let type;
   let printTimeAdd = 0;
-  //        var moveTime=0;
-  // Clean up data from previous model
-  speedsByLayer = { extrude: {}, retract: {}, move: {} };
-  volSpeedsByLayer = {};
-  extrusionSpeedsByLayer = {};
+
+  let max = {
+    x: undefined,
+    y: undefined,
+    z: undefined,
+    speed: undefined,
+    volSpeed: undefined,
+    extrSpeed: undefined,
+  };
+  let min = {
+    x: undefined,
+    y: undefined,
+    z: undefined,
+    speed: undefined,
+    volSpeed: undefined,
+    extrSpeed: undefined,
+  };
+  let modelSize = { x: undefined, y: undefined, z: undefined };
+  let filamentByLayer = {};
+  let filamentByExtruder = {};
+  let totalFilament = 0;
+  let printTime = 0;
+  let printTimeByLayer = {};
+  let layerHeight = 0;
+  let layerCnt = 0;
+  let speeds = { extrude: [], retract: [], move: [] };
+  let speedsByLayer = { extrude: {}, retract: {}, move: {} };
+
+  let volSpeeds = [];
+  let volSpeedsByLayer = {};
+  let extrusionSpeeds = [];
+  let extrusionSpeedsByLayer = {};
 
   for (i = 0; i < model.length; i++) {
     cmds = model[i];
@@ -348,7 +280,7 @@ const analyzeModel = function () {
     }
     sendSizeProgress((i / model.length) * 100);
   }
-  purgeLayers();
+  purgeLayers(model, layerCnt);
 
   modelSize.x = Math.abs(max.x - min.x);
   modelSize.y = Math.abs(max.y - min.y);
@@ -366,12 +298,32 @@ const analyzeModel = function () {
   }
 
   sendAnalyzeDone();
+  return {
+    max,
+    min,
+    modelSize,
+    totalFilament,
+    filamentByLayer,
+    filamentByExtruder,
+    printTime,
+    layerHeight,
+    layerCnt,
+    layerTotal: model.length,
+    speeds,
+    speedsByLayer,
+    volSpeeds,
+    volSpeedsByLayer,
+    printTimeByLayer,
+    extrusionSpeeds,
+    extrusionSpeedsByLayer,
+  };
 };
 
-const doParse = function () {
+const doParse = function (gcode) {
   let argChar;
   let numSlice;
-  model = [];
+  let model = [];
+  let z_heights = {};
   let sendLayer;
   let sendLayerZ = 0;
   let sendMultiLayer = [];
@@ -412,7 +364,6 @@ const doParse = function () {
   let assumeNonDC = false;
 
   for (var i = 0; i < gcode.length; i++) {
-    //            for(var len = gcode.length- 1, i=0;i!=len;i++){
     x = undefined;
     y = undefined;
     z = undefined;
@@ -424,26 +375,15 @@ const doParse = function () {
     prev_extrude.abs = 0;
     gcode[i] = gcode[i].split(/[\(;]/)[0];
 
-    //                prevRetract=0;
-    //                retract=0;
-    //                if(gcode[i].match(/^(?:G0|G1)\s+/i)){
     if (reg.test(gcode[i])) {
       var args = gcode[i].split(/\s/);
       for (j = 0; j < args.length; j++) {
-        //                        console.log(args);
-        //                        if(!args[j])continue;
         switch ((argChar = args[j].charAt(0).toLowerCase())) {
           case "x":
             x = args[j].slice(1);
-            //                            if(x === prevX){
-            //                                x=undefined;
-            //                            }
             break;
           case "y":
             y = args[j].slice(1);
-            //                            if(y===prevY){
-            //                                y=undefined;
-            //                            }
             break;
           case "z":
             z = args[j].slice(1);
@@ -458,9 +398,6 @@ const doParse = function () {
             }
             sendLayer = layer;
             sendLayerZ = z;
-            //                                if(parseFloat(prevZ) < )
-            //                                if(args[j].charAt(1) === "-")layer--;
-            //                                else layer++;
             prevZ = z;
             break;
           case "e":
@@ -483,13 +420,11 @@ const doParse = function () {
               prevRetract[extruder] = -1;
               retract = -1;
             } else if (prev_extrude.abs == 0) {
-              //                                        if(prevRetract <0 )prevRetract=retract;
               retract = 0;
             } else if (prev_extrude.abs > 0 && prevRetract[extruder] < 0) {
               prevRetract[extruder] = 0;
               retract = 1;
             } else {
-              //                                        prevRetract = retract;
               retract = 0;
             }
             prev_extrude[argChar] = numSlice;
@@ -516,7 +451,6 @@ const doParse = function () {
         );
       }
       if (!model[layer]) model[layer] = [];
-      // if(typeof(x) !== 'undefined' || typeof(y) !== 'undefined' ||typeof(z) !== 'undefined'||retract!=0)
       model[layer][model[layer].length] = {
         x: Number(x),
         y: Number(y),
@@ -672,11 +606,6 @@ const doParse = function () {
 
       if (i - lastSend > gcode.length * 0.02 && sendMultiLayer.length != 0) {
         lastSend = i;
-        sendMultiLayerToParent(
-          sendMultiLayer,
-          sendMultiLayerZ,
-          (i / gcode.length) * 100
-        );
         sendMultiLayer = [];
         sendMultiLayerZ = [];
       }
@@ -686,88 +615,19 @@ const doParse = function () {
       sendLayerZ = undefined;
     }
   }
-  //        sendMultiLayer[sendMultiLayer.length] = layer;
-  //        sendMultiLayerZ[sendMultiLayerZ.length] = z;
-  sendMultiLayerToParent(
-    sendMultiLayer,
-    sendMultiLayerZ,
-    (i / gcode.length) * 100
-  );
-
-  //            if(gCodeOptions["sortLayers"])sortLayers();
-  //            if(gCodeOptions["purgeEmptyLayers"])purgeLayers();
+  return model;
 };
 
-const parseGCode = function (message) {
-  gcode = message.gcode;
-  firstReport = message.options.firstReport;
+export function parseGCode(gcode) {
+  return doParse(gcode);
+}
 
-  doParse();
-  gcode = [];
-  self.postMessage({
-    cmd: "returnModel",
-    msg: {
-      //                    model: model
-    },
-  });
-};
+export function runAnalyze(model) {
+  return analyzeModel(model);
+}
 
-const runAnalyze = function (message) {
-  analyzeModel();
-  model = [];
-  z_heights = [];
-  gcode = undefined;
-  firstReport = undefined;
-  z_heights = {};
-  model = [];
-  max = {
-    x: undefined,
-    y: undefined,
-    z: undefined,
-    speed: undefined,
-    volSpeed: undefined,
-    extrSpeed: undefined,
-  };
-  min = {
-    x: undefined,
-    y: undefined,
-    z: undefined,
-    speed: undefined,
-    volSpeed: undefined,
-    extrSpeed: undefined,
-  };
-  modelSize = { x: undefined, y: undefined, z: undefined };
-  filamentByLayer = {};
-  filamentByExtruder = {};
-  totalFilament = 0;
-  printTime = 0;
-  printTimeByLayer = {};
-  layerHeight = 0;
-  layerCnt = 0;
-  speeds = { extrude: [], retract: [], move: [] };
-  speedsByLayer = { extrude: {}, retract: {}, move: {} };
-};
 const setOption = function (options) {
   for (const opt in options) {
     gCodeOptions[opt] = options[opt];
-  }
-};
-
-onmessage = function (e) {
-  const { data } = e;
-  // for some reason firefox doesn't garbage collect when something inside closures is deleted, so we delete and recreate whole object eaech time
-  switch (data.cmd) {
-    case "parseGCode":
-      parseGCode(data.msg);
-      break;
-    case "setOption":
-      setOption(data.msg);
-      break;
-    case "analyzeModel":
-      runAnalyze(data.msg);
-      break;
-
-    default:
-      self.postMessage(`Unknown command: ${data.msg}`, null);
   }
 };

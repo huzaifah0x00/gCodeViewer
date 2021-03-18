@@ -10,6 +10,8 @@
   },
   "rules": {
     "linebreak-style": ["error", "windows"],
-    "max-len": ["error", { "code": 150 }]
+    "max-len": ["error", { "code": 150 }],
+    "no-undef": "error",
+    "import/extensions": "always"
   }
 }

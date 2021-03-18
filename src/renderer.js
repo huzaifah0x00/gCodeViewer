@@ -14,20 +14,20 @@ GCODE.renderer = (function () {
   const gridSizeX = 200;
   const gridSizeY = 200;
   const gridStep = 10;
-  let ctxHeight; let
-    ctxWidth;
+  let ctxHeight;
+  let ctxWidth;
   let prevX = 0;
   let prevY = 0;
 
   //    var colorGrid="#bbbbbb", colorLine="#000000";
-  let sliderHor; let
-    sliderVer;
+  let sliderHor;
+  let sliderVer;
   let layerNumStore;
   let progressStore = { from: 0, to: -1 };
-  let lastX; let
-    lastY;
-  let dragStart; let
-    dragged;
+  let lastX;
+  let lastY;
+  let dragStart;
+  let dragged;
   const scaleFactor = 1.1;
   let model;
   let initialized = false;
@@ -35,21 +35,21 @@ GCODE.renderer = (function () {
   const renderOptions = {
     showMoves: true,
     showRetracts: true,
-    colorGrid: '#bbbbbb',
+    colorGrid: "#bbbbbb",
     extrusionWidth: 1,
     //        colorLine: ["#000000", "#aabb88",  "#ffe7a0", "#6e7700", "#331a00", "#44ba97", "#08262f", "#db0e00", "#ff9977"],
     colorLine: [
-      '#000000',
-      '#45c7ba',
-      '#a9533a',
-      '#ff44cc',
-      '#dd1177',
-      '#eeee22',
-      '#ffbb55',
-      '#ff5511',
-      '#777788',
-      '#ff0000',
-      '#ffff00',
+      "#000000",
+      "#45c7ba",
+      "#a9533a",
+      "#ff44cc",
+      "#dd1177",
+      "#eeee22",
+      "#ffbb55",
+      "#ff5511",
+      "#777788",
+      "#ff0000",
+      "#ffff00",
     ],
     colorLineLen: 9,
     gradientColors: [
@@ -61,9 +61,9 @@ GCODE.renderer = (function () {
       [170, 0, 0],
       [255, 0, 255],
     ],
-    colorMove: '#00ff00',
-    colorRetract: '#ff0000',
-    colorRestart: '#0000ff',
+    colorMove: "#00ff00",
+    colorRetract: "#ff0000",
+    colorRestart: "#0000ff",
     sizeRetractSpot: 2,
     modelCenter: { x: 0, y: 0 },
     moveModel: true,
@@ -107,7 +107,7 @@ GCODE.renderer = (function () {
     // There's still a rounding error somewhere, hence the .1.
     // I leave it to some diligent programmer to find and fix this.
     if (scale < -0.1 || scale > 1.1) {
-      return '#000000';
+      return "#000000";
     }
     if (scale > 1) {
       scale = 1;
@@ -118,11 +118,12 @@ GCODE.renderer = (function () {
     const leftIndex = Math.floor(scale * (numSegments - 1));
     const mix = scale * (numSegments - 1) - leftIndex;
     const leftColor = renderOptions.gradientColors[leftIndex];
-    const rightColor = renderOptions.gradientColors[Math.ceil(scale * (numSegments - 1))];
+    const rightColor =
+      renderOptions.gradientColors[Math.ceil(scale * (numSegments - 1))];
     return rgbToColor(
       leftColor[0] * (1.0 - mix) + rightColor[0] * mix,
       leftColor[1] * (1.0 - mix) + rightColor[1] * mix,
-      leftColor[2] * (1.0 - mix) + rightColor[2] * mix,
+      leftColor[2] * (1.0 - mix) + rightColor[2] * mix
     );
   };
 
@@ -138,18 +139,25 @@ GCODE.renderer = (function () {
       ctx.globalAlpha = 1;
     }
     if (renderOptions.actualWidth) {
-      renderOptions.extrusionWidth = (gCodeOpts.filamentDia * gCodeOpts.wh) / zoomFactor;
+      renderOptions.extrusionWidth =
+        (gCodeOpts.filamentDia * gCodeOpts.wh) / zoomFactor;
     } else {
-      renderOptions.extrusionWidth = (gCodeOpts.filamentDia * gCodeOpts.wh) / zoomFactor / 2;
+      renderOptions.extrusionWidth =
+        (gCodeOpts.filamentDia * gCodeOpts.wh) / zoomFactor / 2;
     }
     if (renderOptions.showNextLayer && layerNumStore < model.length - 1) {
-      drawLayer(layerNumStore + 1, 0, GCODE.renderer.getLayerNumSegments(layerNumStore + 1), true);
+      drawLayer(
+        layerNumStore + 1,
+        0,
+        GCODE.renderer.getLayerNumSegments(layerNumStore + 1),
+        true
+      );
     }
     drawLayer(layerNumStore, progressStore.from, progressStore.to);
   };
 
   function trackTransforms(ctx) {
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     let xform = svg.createSVGMatrix();
     ctx.getTransform = function () {
       return xform;
@@ -213,35 +221,36 @@ GCODE.renderer = (function () {
   }
 
   const startCanvas = function () {
-    canvas = document.getElementById('canvas');
+    canvas = document.getElementById("canvas");
 
     // Проверяем понимает ли браузер canvas
     if (!canvas.getContext) {
-      throw 'exception';
+      throw "exception";
     }
 
-    ctx = canvas.getContext('2d'); // Получаем 2D контекст
+    ctx = canvas.getContext("2d"); // Получаем 2D контекст
     ctxHeight = canvas.height;
     ctxWidth = canvas.width;
     lastX = ctxWidth / 2;
     lastY = ctxHeight / 2;
     ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
+    ctx.lineCap = "round";
     trackTransforms(ctx);
 
     canvas.addEventListener(
-      'mousedown',
+      "mousedown",
       (evt) => {
-        document.body.style.mozUserSelect = document.body.style.webkitUserSelect = document.body.style.userSelect = 'none';
+        document.body.style.mozUserSelect = document.body.style.webkitUserSelect = document.body.style.userSelect =
+          "none";
         lastX = evt.offsetX || evt.pageX - canvas.offsetLeft;
         lastY = evt.offsetY || evt.pageY - canvas.offsetTop;
         dragStart = ctx.transformedPoint(lastX, lastY);
         dragged = false;
       },
-      false,
+      false
     );
     canvas.addEventListener(
-      'mousemove',
+      "mousemove",
       (evt) => {
         lastX = evt.offsetX || evt.pageX - canvas.offsetLeft;
         lastY = evt.offsetY || evt.pageY - canvas.offsetTop;
@@ -252,15 +261,15 @@ GCODE.renderer = (function () {
           reRender();
         }
       },
-      false,
+      false
     );
     canvas.addEventListener(
-      'mouseup',
+      "mouseup",
       (evt) => {
         dragStart = null;
         if (!dragged) zoom(evt.shiftKey ? -1 : 1);
       },
-      false,
+      false
     );
     var zoom = function (clicks) {
       const pt = ctx.transformedPoint(lastX, lastY);
@@ -277,8 +286,8 @@ GCODE.renderer = (function () {
       if (delta) zoom(delta);
       return evt.preventDefault() && false;
     };
-    canvas.addEventListener('DOMMouseScroll', handleScroll, false);
-    canvas.addEventListener('mousewheel', handleScroll, false);
+    canvas.addEventListener("DOMMouseScroll", handleScroll, false);
+    canvas.addEventListener("mousewheel", handleScroll, false);
   };
 
   var drawGrid = function () {
@@ -312,7 +321,7 @@ GCODE.renderer = (function () {
     let speedIndex = 0;
     let prevZ = 0;
     let speedScale = 0;
-    isNextLayer = typeof isNextLayer !== 'undefined' ? isNextLayer : false;
+    isNextLayer = typeof isNextLayer !== "undefined" ? isNextLayer : false;
     if (!isNextLayer) {
       layerNumStore = layerNum;
       progressStore = { from: fromProgress, to: toProgress };
@@ -320,8 +329,8 @@ GCODE.renderer = (function () {
     if (!model || !model[layerNum]) return;
 
     const cmds = model[layerNum];
-    let x; let
-      y;
+    let x;
+    let y;
 
     //        if(toProgress === -1){
     //            toProgress=cmds.length;
@@ -331,25 +340,40 @@ GCODE.renderer = (function () {
       prevX = cmds[fromProgress - 1].x * zoomFactor;
       prevY = -cmds[fromProgress - 1].y * zoomFactor;
     } else if (fromProgress === 0 && layerNum == 0) {
-      if (model[0] && typeof model[0].x !== 'undefined' && typeof model[0].y !== 'undefined') {
+      if (
+        model[0] &&
+        typeof model[0].x !== "undefined" &&
+        typeof model[0].y !== "undefined"
+      ) {
         prevX = model[0].x * zoomFactor;
         prevY = -model[0].y * zoomFactor;
       } else {
         prevX = 0;
         prevY = 0;
       }
-    } else if (typeof cmds[0].prevX !== 'undefined' && typeof cmds[0].prevY !== 'undefined') {
+    } else if (
+      typeof cmds[0].prevX !== "undefined" &&
+      typeof cmds[0].prevY !== "undefined"
+    ) {
       prevX = cmds[0].prevX * zoomFactor;
       prevY = -cmds[0].prevY * zoomFactor;
     } else if (model[layerNum - 1]) {
       prevX = undefined;
       prevY = undefined;
       for (i = model[layerNum - 1].length - 1; i >= 0; i--) {
-        if (typeof prevX === 'undefined' && model[layerNum - 1][i].x !== undefined) prevX = model[layerNum - 1][i].x * zoomFactor;
-        if (typeof prevY === 'undefined' && model[layerNum - 1][i].y !== undefined) prevY = -model[layerNum - 1][i].y * zoomFactor;
+        if (
+          typeof prevX === "undefined" &&
+          model[layerNum - 1][i].x !== undefined
+        )
+          prevX = model[layerNum - 1][i].x * zoomFactor;
+        if (
+          typeof prevY === "undefined" &&
+          model[layerNum - 1][i].y !== undefined
+        )
+          prevY = -model[layerNum - 1][i].y * zoomFactor;
       }
-      if (typeof prevX === 'undefined') prevX = 0;
-      if (typeof prevY === 'undefined') prevY = 0;
+      if (typeof prevX === "undefined") prevX = 0;
+      if (typeof prevY === "undefined") prevY = 0;
     } else {
       prevX = 0;
       prevY = 0;
@@ -361,29 +385,42 @@ GCODE.renderer = (function () {
     for (i = fromProgress; i <= toProgress; i++) {
       ctx.lineWidth = 1;
 
-      if (typeof cmds[i] === 'undefined') continue;
+      if (typeof cmds[i] === "undefined") continue;
 
-      if (typeof cmds[i].prevX !== 'undefined' && typeof cmds[i].prevY !== 'undefined') {
+      if (
+        typeof cmds[i].prevX !== "undefined" &&
+        typeof cmds[i].prevY !== "undefined"
+      ) {
         prevX = cmds[i].prevX * zoomFactor;
         prevY = -cmds[i].prevY * zoomFactor;
       }
       //                console.log(cmds[i]);
-      if (typeof cmds[i].x === 'undefined' || isNaN(cmds[i].x)) x = prevX / zoomFactor;
+      if (typeof cmds[i].x === "undefined" || isNaN(cmds[i].x))
+        x = prevX / zoomFactor;
       else x = cmds[i].x;
-      if (typeof cmds[i].y === 'undefined' || isNaN(cmds[i].y)) y = prevY / zoomFactor;
+      if (typeof cmds[i].y === "undefined" || isNaN(cmds[i].y))
+        y = prevY / zoomFactor;
       else y = -cmds[i].y;
-      if (renderOptions.differentiateColors && !renderOptions.showNextLayer && !renderOptions.renderAnalysis) {
+      if (
+        renderOptions.differentiateColors &&
+        !renderOptions.showNextLayer &&
+        !renderOptions.renderAnalysis
+      ) {
         //                if(speedsByLayer['extrude'][prevZ]){
         if (renderOptions.speedDisplayType === displayType.speed) {
           speedIndex = speeds.extrude.indexOf(cmds[i].speed);
           speedScale = (cmds[i].speed - min.speed) / (max.speed - min.speed);
         } else if (renderOptions.speedDisplayType === displayType.expermm) {
           speedIndex = volSpeeds.indexOf(cmds[i].volPerMM);
-          speedScale = (cmds[i].volPerMM - min.volSpeed) / (max.volSpeed - min.volSpeed);
+          speedScale =
+            (cmds[i].volPerMM - min.volSpeed) / (max.volSpeed - min.volSpeed);
         } else if (renderOptions.speedDisplayType === displayType.volpersec) {
-          const volpersec = ((cmds[i].volPerMM * cmds[i].speed) / 60).toFixed(3);
+          const volpersec = ((cmds[i].volPerMM * cmds[i].speed) / 60).toFixed(
+            3
+          );
           speedIndex = extrusionSpeeds.indexOf(volpersec);
-          speedScale = (volpersec - min.extrSpeed) / (max.extrSpeed - min.extrSpeed);
+          speedScale =
+            (volpersec - min.extrSpeed) / (max.extrSpeed - min.extrSpeed);
         } else {
           speedIndex = 0;
           speedScale = -1;
@@ -395,7 +432,7 @@ GCODE.renderer = (function () {
         if (speedIndex === -1) {
           speedIndex = 0;
         } else if (speedIndex > renderOptions.colorLineLen - 1) {
-          speedIndex %= (renderOptions.colorLineLen - 1);
+          speedIndex %= renderOptions.colorLineLen - 1;
           //                console.log("Too much colors");
         }
       } else if (renderOptions.showNextLayer && isNextLayer) {
@@ -428,7 +465,14 @@ GCODE.renderer = (function () {
             ctx.strokeStyle = renderOptions.colorRetract;
             ctx.fillStyle = renderOptions.colorRetract;
             ctx.beginPath();
-            ctx.arc(prevX, prevY, renderOptions.sizeRetractSpot, 0, Math.PI * 2, true);
+            ctx.arc(
+              prevX,
+              prevY,
+              renderOptions.sizeRetractSpot,
+              0,
+              Math.PI * 2,
+              true
+            );
             ctx.stroke();
             ctx.fill();
           }
@@ -453,16 +497,21 @@ GCODE.renderer = (function () {
           } else if (speedIndex === -1) {
             let val = parseInt(cmds[i].errLevelB).toString(16);
             //                        var val = '8A';
-            const crB = `#${'00'.substr(0, 2 - val.length)}${val}0000`;
+            const crB = `#${"00".substr(0, 2 - val.length)}${val}0000`;
             val = parseInt(cmds[i].errLevelE).toString(16);
-            const crE = `#${'00'.substr(0, 2 - val.length)}${val}0000`;
+            const crE = `#${"00".substr(0, 2 - val.length)}${val}0000`;
             //                        if(renderOptions['showMoves'])console.log(cr);
-            const gradient = ctx.createLinearGradient(prevX, prevY, x * zoomFactor, y * zoomFactor);
+            const gradient = ctx.createLinearGradient(
+              prevX,
+              prevY,
+              x * zoomFactor,
+              y * zoomFactor
+            );
             if (cmds[i].errType === 1) {
               var limit = 1 - cmds[i].errDelimiter;
               if (limit >= 0.99) limit = 0.99;
-              gradient.addColorStop(0, '#000000');
-              gradient.addColorStop(limit, '#000000');
+              gradient.addColorStop(0, "#000000");
+              gradient.addColorStop(limit, "#000000");
               gradient.addColorStop(limit + 0.01, crE);
               gradient.addColorStop(1, crE);
             } else if (cmds[i].errType === 2) {
@@ -470,8 +519,8 @@ GCODE.renderer = (function () {
               var limit = cmds[i].errDelimiter;
               if (limit >= 0.99) limit = 0.99;
               gradient.addColorStop(limit, crB);
-              gradient.addColorStop(limit + 0.01, '#000000');
-              gradient.addColorStop(1, '#000000');
+              gradient.addColorStop(limit + 0.01, "#000000");
+              gradient.addColorStop(1, "#000000");
             } else {
               gradient.addColorStop(0, crB);
               gradient.addColorStop(1, crE);
@@ -488,7 +537,14 @@ GCODE.renderer = (function () {
           ctx.strokeStyle = renderOptions.colorRestart;
           ctx.fillStyle = renderOptions.colorRestart;
           ctx.beginPath();
-          ctx.arc(prevX, prevY, renderOptions.sizeRetractSpot, 0, Math.PI * 2, true);
+          ctx.arc(
+            prevX,
+            prevY,
+            renderOptions.sizeRetractSpot,
+            0,
+            Math.PI * 2,
+            true
+          );
           ctx.stroke();
           ctx.fill();
           //                        ctx.strokeStyle = renderOptions["colorLine"][0];
@@ -508,7 +564,7 @@ GCODE.renderer = (function () {
       initialized = true;
       ctx.translate(
         (canvas.width - gridSizeX * zoomFactor) / 2,
-        gridSizeY * zoomFactor + (canvas.height - gridSizeY * zoomFactor) / 2,
+        gridSizeY * zoomFactor + (canvas.height - gridSizeY * zoomFactor) / 2
       );
     },
     setOption(options) {
@@ -543,16 +599,23 @@ GCODE.renderer = (function () {
           ctx.globalAlpha = 1;
         }
         if (renderOptions.actualWidth) {
-          renderOptions.extrusionWidth = (gCodeOpts.filamentDia * gCodeOpts.wh) / zoomFactor;
+          renderOptions.extrusionWidth =
+            (gCodeOpts.filamentDia * gCodeOpts.wh) / zoomFactor;
         } else {
-          renderOptions.extrusionWidth = (gCodeOpts.filamentDia * gCodeOpts.wh) / zoomFactor / 2;
+          renderOptions.extrusionWidth =
+            (gCodeOpts.filamentDia * gCodeOpts.wh) / zoomFactor / 2;
         }
         if (renderOptions.showNextLayer && layerNum < model.length - 1) {
-          drawLayer(layerNum + 1, 0, this.getLayerNumSegments(layerNum + 1), true);
+          drawLayer(
+            layerNum + 1,
+            0,
+            this.getLayerNumSegments(layerNum + 1),
+            true
+          );
         }
         drawLayer(layerNum, fromProgress, toProgress);
       } else {
-        console.log('Got request to render non-existent layer!!');
+        console.log("Got request to render non-existent layer!!");
       }
     },
     getModelNumLayers() {
@@ -582,12 +645,17 @@ GCODE.renderer = (function () {
       min = mdlInfo.min;
       //            console.log(speeds);
       //            console.log(mdlInfo.min.x + ' ' + mdlInfo.modelSize.x);
-      offsetModelX = (gridSizeX / 2 - (mdlInfo.min.x + mdlInfo.modelSize.x / 2)) * zoomFactor;
-      offsetModelY = (mdlInfo.min.y + mdlInfo.modelSize.y / 2) * zoomFactor - (gridSizeY / 2) * zoomFactor;
+      offsetModelX =
+        (gridSizeX / 2 - (mdlInfo.min.x + mdlInfo.modelSize.x / 2)) *
+        zoomFactor;
+      offsetModelY =
+        (mdlInfo.min.y + mdlInfo.modelSize.y / 2) * zoomFactor -
+        (gridSizeY / 2) * zoomFactor;
       if (ctx) ctx.translate(offsetModelX, offsetModelY);
-      const scaleF = mdlInfo.modelSize.x > mdlInfo.modelSize.y
-        ? canvas.width / mdlInfo.modelSize.x / zoomFactor
-        : canvas.height / mdlInfo.modelSize.y / zoomFactor;
+      const scaleF =
+        mdlInfo.modelSize.x > mdlInfo.modelSize.y
+          ? canvas.width / mdlInfo.modelSize.x / zoomFactor
+          : canvas.height / mdlInfo.modelSize.y / zoomFactor;
       const pt = ctx.transformedPoint(canvas.width / 2, canvas.height / 2);
       const transform = ctx.getTransform();
       const sX = scaleF / transform.a;
@@ -600,16 +668,16 @@ GCODE.renderer = (function () {
     },
     getZ(layerNum) {
       if (!model && !model[layerNum]) {
-        return '-1';
+        return "-1";
       }
       const cmds = model[layerNum];
       for (let i = 0; i < cmds.length; i++) {
         if (cmds[i].prevZ !== undefined) return cmds[i].prevZ;
       }
-      return '-1';
+      return "-1";
     },
     getGradientColor(scale) {
       return gradientColor(scale);
     },
   };
-}());
+})();

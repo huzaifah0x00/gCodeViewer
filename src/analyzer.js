@@ -6,10 +6,11 @@
  */
 
 GCODE.analyzer = (function () {
-  let savedRenderOptions; let
-    dia;
-  let canvas; let ctx; let
-    transform;
+  let savedRenderOptions;
+  let dia;
+  let canvas;
+  let ctx;
+  let transform;
   let lastAnalyzedLayer = -1;
   let initialized = false;
   const usableLevel = 190;
@@ -40,7 +41,7 @@ GCODE.analyzer = (function () {
     GCODE.renderer.setOption({ actualWidth: true });
     GCODE.renderer.setOption({ differentiateColors: false });
     GCODE.renderer.setOption({ showNextLayer: false });
-    GCODE.renderer.setOption({ colorGrid: '#ffffff' });
+    GCODE.renderer.setOption({ colorGrid: "#ffffff" });
     GCODE.renderer.setOption({ renderAnalysis: true });
     //        console.log(GCODE.renderer.getOptions());
   };
@@ -97,7 +98,10 @@ GCODE.analyzer = (function () {
     step[1] = len[1] / stepCnt[index];
     stepCnt[index] = parseInt(stepCnt[index]) + 1;
     for (let i = 2; i < stepCnt[index]; i++) {
-      const p1 = { x: parseInt(p.x - step[0] * i), y: parseInt(p.y - step[1] * i) };
+      const p1 = {
+        x: parseInt(p.x - step[0] * i),
+        y: parseInt(p.y - step[1] * i),
+      };
       const res = checkPoint(imgData, p1);
       if (res < usableLevel) {
         return i / stepCnt[index];
@@ -124,14 +128,17 @@ GCODE.analyzer = (function () {
       let prevY = 0;
       for (let i = 0; i < model[layerNum].length; i++) {
         const cmds = model[layerNum];
-        if (typeof cmds[i] === 'undefined') continue;
-        if (typeof cmds[i].prevX !== 'undefined' && typeof cmds[i].prevY !== 'undefined') {
+        if (typeof cmds[i] === "undefined") continue;
+        if (
+          typeof cmds[i].prevX !== "undefined" &&
+          typeof cmds[i].prevY !== "undefined"
+        ) {
           prevX = cmds[i].prevX * zoomFactor;
           prevY = -cmds[i].prevY * zoomFactor;
         }
-        if (typeof cmds[i].x === 'undefined' || isNaN(cmds[i].x)) x = prevX;
+        if (typeof cmds[i].x === "undefined" || isNaN(cmds[i].x)) x = prevX;
         else x = cmds[i].x * zoomFactor;
-        if (typeof cmds[i].y === 'undefined' || isNaN(cmds[i].y)) y = prevY;
+        if (typeof cmds[i].y === "undefined" || isNaN(cmds[i].y)) y = prevY;
         else y = -cmds[i].y * zoomFactor;
 
         if (cmds[i].extrude) {
@@ -145,13 +152,20 @@ GCODE.analyzer = (function () {
           const result = (r2 + r1) / 2;
           model[layerNum][i].errLevelE = r2 < usableLevel ? 0 : r2 - stepLevel;
           model[layerNum][i].errLevelB = r1 < usableLevel ? 0 : r1 - stepLevel;
-          if (r1 < usableLevel && r2 < usableLevel) model[layerNum][i].errType = 3;
+          if (r1 < usableLevel && r2 < usableLevel)
+            model[layerNum][i].errType = 3;
           else if (r1 < usableLevel) model[layerNum][i].errType = 1;
           else if (r2 < usableLevel) model[layerNum][i].errType = 2;
           else model[layerNum][i].errType = 0;
           //                    model[layerNum][i].errType = r1<usableLevel&&r2<usableLevel?2:(r1<usableLevel||r2<usableLevel?1:0);
           if (model[layerNum][i].errType === 1) {
-            model[layerNum][i].errDelimiter = findNearestPoint(imgData, x, y, prevX, prevY);
+            model[layerNum][i].errDelimiter = findNearestPoint(
+              imgData,
+              x,
+              y,
+              prevX,
+              prevY
+            );
           } else if (model[layerNum][i].errType === 2) {
             const tmp = findNearestPoint(imgData, prevX, prevY, x, y);
             model[layerNum][i].errDelimiter = tmp;
@@ -206,7 +220,11 @@ GCODE.analyzer = (function () {
   };
 
   const analyze = function (layerNum) {
-    GCODE.renderer.render(layerNum, 0, GCODE.renderer.getLayerNumSegments(layerNum));
+    GCODE.renderer.render(
+      layerNum,
+      0,
+      GCODE.renderer.getLayerNumSegments(layerNum)
+    );
     return drawLineEnds(layerNum + 1);
   };
 
@@ -215,23 +233,23 @@ GCODE.analyzer = (function () {
     const i = lastAnalyzedLayer;
     const result = analyze(i);
     const progress = (100 / numLayers) * i;
-    $('#analysisProgress')
+    $("#analysisProgress")
       .width(`${parseInt(progress)}%`)
       .text(`${parseInt(progress)}%`);
     if (i < GCODE.renderer.getModelNumLayers() - 1) {
       lastAnalyzedLayer++;
       requestAnimationFrame(analyzeStep);
     } else {
-      $('#analysisModal').modal('hide');
+      $("#analysisModal").modal("hide");
       restoreOptions();
-      $('#analysisOptionsDiv').removeClass('hide');
+      $("#analysisOptionsDiv").removeClass("hide");
       GCODE.ui.resetSliders();
       GCODE.renderer.render(0, 0, GCODE.renderer.getLayerNumSegments(0));
     }
   };
 
   const analyzeCycle = function () {
-    $('#analysisModal').modal('show');
+    $("#analysisModal").modal("show");
     //        var i = lastAnalyzedLayer===-1?0:lastAnalyzedLayer+1;
     lastAnalyzedLayer = 0;
     //        var numLayers = GCODE.renderer.getModelNumLayers();
@@ -254,8 +272,8 @@ GCODE.analyzer = (function () {
 
   const init = function () {
     if (initialized) return;
-    canvas = document.getElementById('canvas');
-    ctx = canvas.getContext('2d');
+    canvas = document.getElementById("canvas");
+    ctx = canvas.getContext("2d");
     transform = ctx.getTransform();
     saveOptions();
     prepareOptions();
@@ -283,9 +301,13 @@ GCODE.analyzer = (function () {
     },
     multiplyPoint2(point) {
       return {
-        x: parseInt(point.x * transform.a + point.y * transform.c + transform.e),
-        y: parseInt(point.x * transform.b + point.y * transform.d + transform.f),
+        x: parseInt(
+          point.x * transform.a + point.y * transform.c + transform.e
+        ),
+        y: parseInt(
+          point.x * transform.b + point.y * transform.d + transform.f
+        ),
       };
     },
   };
-}());
+})();

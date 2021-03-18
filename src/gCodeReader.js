@@ -6,15 +6,25 @@
 
 export default function gCodeReader() {
   // ***** PRIVATE ******
-  let gcode; let
-    lines;
+  let gcode;
+  let lines;
   let z_heights = {};
   let model = [];
   let max = {
-    x: undefined, y: undefined, z: undefined, speed: undefined, volSpeed: undefined, extrSpeed: undefined,
+    x: undefined,
+    y: undefined,
+    z: undefined,
+    speed: undefined,
+    volSpeed: undefined,
+    extrSpeed: undefined,
   };
   let min = {
-    x: undefined, y: undefined, z: undefined, speed: undefined, volSpeed: undefined, extrSpeed: undefined,
+    x: undefined,
+    y: undefined,
+    z: undefined,
+    speed: undefined,
+    volSpeed: undefined,
+    extrSpeed: undefined,
   };
   let modelSize = { x: undefined, y: undefined, z: undefined };
   let filamentByLayer = {};
@@ -27,7 +37,7 @@ export default function gCodeReader() {
   let layerCnt = 0;
   let layerTotal = 0;
   let speeds = {};
-  let slicer = 'unknown';
+  let slicer = "unknown";
   let speedsByLayer = {};
   let volSpeeds = {};
   let volSpeedsByLayer = {};
@@ -37,7 +47,7 @@ export default function gCodeReader() {
     sortLayers: false,
     purgeEmptyLayers: true,
     analyzeModel: false,
-    filamentType: 'ABS',
+    filamentType: "ABS",
     filamentDia: 1.75,
     nozzleDia: 0.4,
   };
@@ -47,7 +57,8 @@ export default function gCodeReader() {
     gcode = [];
     let i;
     for (i = 0; i < lines.length; i++) {
-      if (lines[i].match(/^(G0|G1|G90|G91|G92|M82|M83|G28)/i)) gcode.push(lines[i]);
+      if (lines[i].match(/^(G0|G1|G90|G91|G92|M82|M83|G28)/i))
+        gcode.push(lines[i]);
     }
     lines = [];
     //        console.log("GCode prepared");
@@ -68,7 +79,7 @@ export default function gCodeReader() {
     //        console.log(model.length);
     for (let i = 0; i < sortedZ.length; i++) {
       //            console.log("i is " + i +" and sortedZ[i] is " + sortedZ[i] + "and z_heights[] is " + z_heights[sortedZ[i]] );
-      if (typeof z_heights[sortedZ[i]] === 'undefined') continue;
+      if (typeof z_heights[sortedZ[i]] === "undefined") continue;
       tmpModel[i] = model[z_heights[sortedZ[i]]];
     }
     model = tmpModel;
@@ -79,12 +90,12 @@ export default function gCodeReader() {
   const purgeLayers = function () {
     let purge = true;
     if (!model) {
-      console.log('Something terribly wrong just happened.');
+      console.log("Something terribly wrong just happened.");
       return;
     }
     for (let i = 0; i < model.length; i++) {
       purge = true;
-      if (typeof model[i] === 'undefined') purge = true;
+      if (typeof model[i] === "undefined") purge = true;
       else {
         for (let j = 0; j < model[i].length; j++) {
           if (model[i][j].extrude) purge = false;
@@ -135,7 +146,7 @@ export default function gCodeReader() {
   const getParamsFromCura = function (gcode) {
     //        console.log("cura");
     const profileString = gcode.match(
-      /CURA_PROFILE_STRING:((?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4}))/m,
+      /CURA_PROFILE_STRING:((?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4}))/m
     );
     if (profileString) {
       const raw = window.atob(profileString[1]);
@@ -162,22 +173,22 @@ export default function gCodeReader() {
 
   const detectSlicer = function (gcode) {
     if (gcode.match(/Slic3r/)) {
-      slicer = 'Slic3r';
+      slicer = "Slic3r";
       getParamsFromSlic3r(gcode);
     } else if (gcode.match(/KISSlicer/)) {
-      slicer = 'KISSlicer';
+      slicer = "KISSlicer";
       getParamsFromKISSlicer(gcode);
     } else if (gcode.match(/skeinforge/)) {
-      slicer = 'skeinforge';
+      slicer = "skeinforge";
       getParamsFromSkeinforge(gcode);
     } else if (gcode.match(/CURA_PROFILE_STRING/)) {
-      slicer = 'cura';
+      slicer = "cura";
       getParamsFromCura(gcode);
     } else if (gcode.match(/Miracle/)) {
-      slicer = 'makerbot';
+      slicer = "makerbot";
       getParamsFromMiracleGrue(gcode);
     } else if (gcode.match(/ffslicer/)) {
-      slicer = 'Flash Forge';
+      slicer = "Flash Forge";
     }
   };
 
@@ -193,7 +204,7 @@ export default function gCodeReader() {
       //            prepareGCode();
 
       GCODE.ui.worker.postMessage({
-        cmd: 'parseGCode',
+        cmd: "parseGCode",
         msg: {
           gcode: lines,
           options: {
@@ -254,15 +265,22 @@ export default function gCodeReader() {
       extrusionSpeedsByLayer = msg.extrusionSpeedsByLayer;
 
       let density = 1;
-      if (gCodeOptions.filamentType === 'ABS') {
+      if (gCodeOptions.filamentType === "ABS") {
         density = 1.04;
-      } else if (gCodeOptions.filamentType === 'PLA') {
+      } else if (gCodeOptions.filamentType === "PLA") {
         density = 1.24;
       }
-      totalWeight = (((((density * 3.141 * gCodeOptions.filamentDia) / 10) * gCodeOptions.filamentDia) / 10 / 4) * totalFilament) / 10;
+      totalWeight =
+        (((((density * 3.141 * gCodeOptions.filamentDia) / 10) *
+          gCodeOptions.filamentDia) /
+          10 /
+          4) *
+          totalFilament) /
+        10;
 
-      gCodeOptions.wh = parseFloat(gCodeOptions.nozzleDia) / parseFloat(layerHeight);
-      if (slicer === 'Slic3r' || slicer === 'cura') {
+      gCodeOptions.wh =
+        parseFloat(gCodeOptions.nozzleDia) / parseFloat(layerHeight);
+      if (slicer === "Slic3r" || slicer === "cura") {
         // slic3r stores actual nozzle diameter, but extrusion is usually slightly thicker, here we compensate for that
         // kissslicer stores actual extrusion width - so no need for that.
         gCodeOptions.wh *= 1.1;
@@ -297,7 +315,10 @@ export default function gCodeReader() {
     },
     getGCodeLines(layer, fromSegments, toSegments) {
       const i = 0;
-      const result = { first: model[layer][fromSegments].gcodeLine, last: model[layer][toSegments].gcodeLine };
+      const result = {
+        first: model[layer][fromSegments].gcodeLine,
+        last: model[layer][toSegments].gcodeLine,
+      };
       return result;
     },
     getOptions() {

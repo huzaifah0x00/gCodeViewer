@@ -10,8 +10,8 @@ GCODE.renderer3d = (function () {
   let prevX = 0;
   let prevY = 0;
   let prevZ = 0;
-  let sliderHor; let
-    sliderVer;
+  let sliderHor;
+  let sliderVer;
   let object;
   let geometry;
 
@@ -35,7 +35,7 @@ GCODE.renderer3d = (function () {
     showMoves: true,
     colorLine: 0x000000,
     colorMove: 0x00ff00,
-    rendererType: 'webgl',
+    rendererType: "webgl",
   };
 
   var render = function () {
@@ -56,7 +56,9 @@ GCODE.renderer3d = (function () {
       if (!cmds[j].extrude) {
       } else {
         geometry.vertices.push(new THREE.Vector3(prevX, prevY, prevZ));
-        geometry.vertices.push(new THREE.Vector3(cmds[j].x, cmds[j].y, cmds[j].z));
+        geometry.vertices.push(
+          new THREE.Vector3(cmds[j].x, cmds[j].y, cmds[j].z)
+        );
       }
       prevX = cmds[j].x;
       prevY = cmds[j].y;
@@ -72,17 +74,22 @@ GCODE.renderer3d = (function () {
       // TODO: need to remove UI stuff from here
     }
     const lineMaterial = new THREE.LineBasicMaterial({
-      color: renderOptions.colorLine, lineWidth: 2, opacity: 0.6, fog: false,
+      color: renderOptions.colorLine,
+      lineWidth: 2,
+      opacity: 0.6,
+      fog: false,
     });
     geometry.computeBoundingBox();
     object.add(new THREE.Line(geometry, lineMaterial, THREE.LinePieces));
-    const center = new THREE.Vector3().add(geometry.boundingBox.min, geometry.boundingBox.max).divideScalar(2);
+    const center = new THREE.Vector3()
+      .add(geometry.boundingBox.min, geometry.boundingBox.max)
+      .divideScalar(2);
     object.position = center.multiplyScalar(-1);
   };
 
   const buildModel = function () {
-    let i; let
-      j;
+    let i;
+    let j;
     let cmds = [];
 
     for (i = 0; i < model.length; i++) {
@@ -96,7 +103,9 @@ GCODE.renderer3d = (function () {
         if (!cmds[j].extrude) {
         } else {
           geometry.vertices.push(new THREE.Vector3(prevX, prevY, prevZ));
-          geometry.vertices.push(new THREE.Vector3(cmds[j].x, cmds[j].y, cmds[j].z));
+          geometry.vertices.push(
+            new THREE.Vector3(cmds[j].x, cmds[j].y, cmds[j].z)
+          );
         }
         prevX = cmds[j].x;
         prevY = cmds[j].y;
@@ -104,17 +113,22 @@ GCODE.renderer3d = (function () {
       }
       // TODO: need to remove UI stuff from here
       $(() => {
-        $('#progressbar').progressbar({
+        $("#progressbar").progressbar({
           value: (i / model.length) * 100,
         });
       });
     }
     const lineMaterial = new THREE.LineBasicMaterial({
-      color: renderOptions.colorLine, lineWidth: 4, opacity: 1, fog: false,
+      color: renderOptions.colorLine,
+      lineWidth: 4,
+      opacity: 1,
+      fog: false,
     });
     geometry.computeBoundingBox();
     object.add(new THREE.Line(geometry, lineMaterial, THREE.LinePieces));
-    const center = new THREE.Vector3().add(geometry.boundingBox.min, geometry.boundingBox.max).divideScalar(2);
+    const center = new THREE.Vector3()
+      .add(geometry.boundingBox.min, geometry.boundingBox.max)
+      .divideScalar(2);
     object.position = center.multiplyScalar(-1);
   };
 
@@ -143,14 +157,23 @@ GCODE.renderer3d = (function () {
   return {
     init() {
       modelLoaded = false;
-      if (renderOptions.rendererType == 'webgl') renderer = new THREE.WebGLRenderer({ clearColor: 0xffffff, clearAlpha: 1 });
-      else if (renderOptions.rendererType == 'canvas') { renderer = new THREE.CanvasRenderer({ clearColor: 0xffffff, clearAlpha: 1 }); } else {
-        console.log('unknown rendererType');
+      if (renderOptions.rendererType == "webgl")
+        renderer = new THREE.WebGLRenderer({
+          clearColor: 0xffffff,
+          clearAlpha: 1,
+        });
+      else if (renderOptions.rendererType == "canvas") {
+        renderer = new THREE.CanvasRenderer({
+          clearColor: 0xffffff,
+          clearAlpha: 1,
+        });
+      } else {
+        console.log("unknown rendererType");
         return;
       }
 
       scene = new THREE.Scene();
-      const $container = $('#3d_container');
+      const $container = $("#3d_container");
       camera.position.z = 200;
       scene.add(camera);
       renderer.setSize(WIDTH, HEIGHT);
@@ -207,4 +230,4 @@ GCODE.renderer3d = (function () {
       //            renderer.render(scene, camera);
     },
   };
-}());
+})();

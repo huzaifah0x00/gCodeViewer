@@ -7,16 +7,19 @@ which is unsafe (and you should never browse internet with that option "on").
 ### Docker Setup Instructions:
 
 1. Build docker image
-``` bash
+
+```bash
 docker build -t gcodews .
 ```
 
 2. Run docker image
-``` bash
+
+```bash
 docker docker run --name gcodews -d -p 8080:80 gcodews
 ```
 
 3. Access site via port `8080` on your browser
+
 ```
 localhost:8080
 127.0.0.1:8080

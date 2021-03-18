@@ -1,0 +1,20 @@
+{
+  "name": "huza-gcodeviewer",
+  "version": "1.0.0",
+  "description": "gCodeVisualizer - a web-based visual gcode viewer and analyzer.\r Available online at http://gcode.ws/",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/huzaifah0x00/gCodeViewer.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/huzaifah0x00/gCodeViewer/issues"
+  },
+  "homepage": "https://github.com/huzaifah0x00/gCodeViewer#readme"
+}

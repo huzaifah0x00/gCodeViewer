@@ -4,20 +4,7 @@
  * Time: 12:18 PM
  */
 
-const gCodeOptions = {
-  sortLayers: false,
-  purgeEmptyLayers: true,
-  analyzeModel: false,
-};
 // Only print move speeds will be considered in max.speed and min.speed
-
-const sendSizeProgress = function (progress) {
-  console.log(`sendSizeProgress Called: with progress: ${progress}`);
-};
-
-const sendAnalyzeDone = function () {
-  console.log("sendAnalyzeDONE");
-};
 
 const purgeLayers = function (model, layerCnt) {
   // What does this function do?
@@ -278,7 +265,6 @@ const analyzeModel = function (model) {
         }
       }
     }
-    sendSizeProgress((i / model.length) * 100);
   }
   purgeLayers(model, layerCnt);
 
@@ -297,7 +283,6 @@ const analyzeModel = function (model) {
     max.extrSpeed = min.extrSpeed + 1.0;
   }
 
-  sendAnalyzeDone();
   return {
     max,
     min,
@@ -625,9 +610,3 @@ export function parseGCode(gcode) {
 export function runAnalyze(model) {
   return analyzeModel(model);
 }
-
-const setOption = function (options) {
-  for (const opt in options) {
-    gCodeOptions[opt] = options[opt];
-  }
-};

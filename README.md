@@ -5,14 +5,13 @@ this Fork is a nodeJS version of the Gcode analyzer part.
 ### Setup Instructions:
 
 1. install dependencies
-``` bash
+
+```bash
 npm install
 ```
 
-The future structure of this project isn't decided yet.
-2. run the index.js script?
-``` bash
+The future structure of this project isn't decided yet. 2. run the analyze.js script?
+
+```bash
 npm start
 ```
-
-

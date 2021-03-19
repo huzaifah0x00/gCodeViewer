@@ -2,10 +2,10 @@
   "name": "huza-gcodeviewer",
   "version": "1.0.0",
   "description": "gCodeVisualizer - a web-based visual gcode viewer and analyzer.\r Available online at http://gcode.ws/",
-  "main": "src/index.js",
+  "main": "src/analyze.js",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node src/analyze.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -24,5 +24,8 @@
     "eslint-config-airbnb-base": "^14.2.1",
     "eslint-config-prettier": "^8.1.0",
     "eslint-plugin-import": "^2.22.1"
+  },
+  "dependencies": {
+    "commander": "^7.1.0"
   }
 }

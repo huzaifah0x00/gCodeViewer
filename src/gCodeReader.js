@@ -7,52 +7,52 @@
 import { parseGCode } from "./Worker.js";
 
 export default class GCodeReader {
-  slicer = "unknown";
-  gCodeOptions = {
-    sortLayers: true,
-    purgeEmptyLayers: true,
-    analyzeModel: false,
-    filamentType: "ABS",
-    filamentDia: 1.75,
-    nozzleDia: 0.4,
-  };
+  constructor() {
+    this.slicer = "unknown";
+    this.gCodeOptions = {
+      sortLayers: true,
+      purgeEmptyLayers: true,
+      analyzeModel: false,
+      filamentType: "ABS",
+      filamentDia: 1.75,
+      nozzleDia: 0.4,
+    };
+  }
 
-  getParamsFromKISSlicer = function (gcode) {
+  getParamsFromKISSlicer(gcode) {
     const nozzle = gcode.match(/extrusion_width_mm\s*=\s*(\d*\.\d+)/m);
     if (nozzle) {
-      gCodeOptions.nozzleDia = nozzle[1];
+      this.gCodeOptions.nozzleDia = nozzle[1];
     }
     const filament = gcode.match(/fiber_dia_mm\s*=\s*(\d*\.\d+)/m);
     if (filament) {
-      gCodeOptions.filamentDia = filament[1];
+      this.gCodeOptions.filamentDia = filament[1];
     }
-  };
+  }
 
-  getParamsFromSlic3r = function (gcode) {
+  getParamsFromSlic3r(gcode) {
     const nozzle = gcode.match(/nozzle_diameter\s*=\s*(\d*\.\d+)/m);
     if (nozzle) {
-      gCodeOptions.nozzleDia = nozzle[1];
+      this.gCodeOptions.nozzleDia = nozzle[1];
     }
     const filament = gcode.match(/filament_diameter\s*=\s*(\d*\.\d+)/m);
     if (filament) {
-      gCodeOptions.filamentDia = filament[1];
+      this.gCodeOptions.filamentDia = filament[1];
     }
-  };
+  }
 
-  getParamsFromSkeinforge = function (gcode) {
+  getParamsFromSkeinforge(gcode) {
     const nozzle = gcode.match(/nozzle_diameter\s*=\s*(\d*\.\d+)/m);
     if (nozzle) {
-      gCodeOptions.nozzleDia = nozzle[1];
+      this.gCodeOptions.nozzleDia = nozzle[1];
     }
     const filament = gcode.match(/Filament_Diameter_(mm)\s*:\s*(\d*\.\d+)/m);
     if (filament) {
-      gCodeOptions.filamentDia = filament[1];
+      this.gCodeOptions.filamentDia = filament[1];
     }
-  };
+  }
 
-  getParamsFromMiracleGrue = function (gcode) {};
-
-  getParamsFromCura = function (gcode) {
+  getParamsFromCura(gcode) {
     //        console.log("cura");
     const profileString = gcode.match(
       /CURA_PROFILE_STRING:((?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4}))/m
@@ -71,42 +71,42 @@ export default class GCodeReader {
       }
       const nozzle = msg.match(/nozzle_size\s*=\s*(\d*\.\d+)/m);
       if (nozzle) {
-        gCodeOptions.nozzleDia = nozzle[1];
+        this.gCodeOptions.nozzleDia = nozzle[1];
       }
       const filament = msg.match(/filament_diameter\s*=\s*(\d*\.\d+)/m);
       if (filament) {
-        gCodeOptions.filamentDia = filament[1];
+        this.gCodeOptions.filamentDia = filament[1];
       }
     }
-  };
+  }
 
-  detectSlicer = function (gcode) {
+  detectSlicer(gcode) {
     let slicer = "unknown";
     if (gcode.match(/Slic3r/)) {
       slicer = "Slic3r";
-      getParamsFromSlic3r(gcode);
+      this.getParamsFromSlic3r(gcode);
     } else if (gcode.match(/KISSlicer/)) {
       slicer = "KISSlicer";
-      getParamsFromKISSlicer(gcode);
+      this.getParamsFromKISSlicer(gcode);
     } else if (gcode.match(/skeinforge/)) {
       slicer = "skeinforge";
-      getParamsFromSkeinforge(gcode);
+      this.getParamsFromSkeinforge(gcode);
     } else if (gcode.match(/CURA_PROFILE_STRING/)) {
       slicer = "cura";
-      getParamsFromCura(gcode);
+      this.getParamsFromCura(gcode);
     } else if (gcode.match(/Miracle/)) {
       slicer = "makerbot";
-      getParamsFromMiracleGrue(gcode);
+      this.getParamsFromMiracleGrue(gcode);
     } else if (gcode.match(/ffslicer/)) {
       slicer = "Flash Forge";
     }
 
     return slicer;
-  };
+  }
 
   loadFile(gcodeFileText) {
     this.detectSlicer(gcodeFileText);
-    let lines = gcodeFileText.split(/\n/);
+    const lines = gcodeFileText.split(/\n/);
     return parseGCode(lines);
   }
 }

@@ -4,38 +4,303 @@
  * Time: 12:18 PM
  */
 
-// Only print move speeds will be considered in max.speed and min.speed
+import MoveCommand from "./Command.js";
+import Layer from "./Layer.js";
+import Model from "./Model.js";
+import GCodeAnalysis from "./Analysis.js";
 
-const purgeLayers = function (model, layerCnt) {
-  // What does this function do?
-  let purge = true;
-  for (let i = 0; i < model.length; i++) {
-    purge = true;
-    if (!model[i]) purge = true;
-    else {
-      for (let j = 0; j < model[i].length; j++) {
-        if (model[i][j].extrude) purge = false;
+export function parseGCode(gcodeLines) {
+  let numSlice;
+  const model = new Model();
+  const zHeights = {};
+
+  const linearMoveRegex = new RegExp(/^(?:G0|G1)\s/i);
+  let layerNum = 0;
+
+  const prevRetract = {
+    e: 0,
+    a: 0,
+    b: 0,
+    c: 0,
+  };
+
+  let prevZ = 0;
+  let prevX;
+  let prevY;
+  let lastF = 4000;
+
+  const prevExtrude = {
+    a: undefined,
+    b: undefined,
+    c: undefined,
+    e: undefined,
+    abs: undefined,
+  };
+
+  let extrudeRelative = false;
+  let dcExtrude = false;
+  let assumeNonDC = false;
+
+  // Loop through Each individual Gcode line
+  for (let i = 0; i < gcodeLines.length; i += 1) {
+    let volPerMM;
+    let retract = 0;
+
+    let isExtrusion = false;
+    let extruder = null;
+    prevExtrude.abs = 0;
+    gcodeLines[i] = gcodeLines[i].split(/[\(;]/)[0];
+
+    const isLinearMove = linearMoveRegex.test(gcodeLines[i]);
+
+    if (isLinearMove) {
+      let x;
+      let y;
+      let z;
+      const args = gcodeLines[i].split(" ");
+      for (let j = 0; j < args.length; j += 1) {
+        const argChar = args[j].charAt(0).toLowerCase();
+        switch (argChar) {
+          case "x":
+            x = args[j].slice(1);
+            break;
+          case "y":
+            y = args[j].slice(1);
+            break;
+          case "z":
+            z = args[j].slice(1);
+            z = Number(z);
+            if (z === prevZ) break; // continue ?;
+            if (zHeights.z) {
+              layerNum = zHeights[z];
+            } else {
+              layerNum = model.layers.length;
+              zHeights[z] = layerNum;
+            }
+            prevZ = z;
+            break;
+          case "e":
+          case "a":
+          case "b":
+          case "c":
+            assumeNonDC = true;
+            extruder = argChar;
+            numSlice = parseFloat(args[j].slice(1)).toFixed(6);
+
+            if (!extrudeRelative) {
+              // absolute extrusion positioning
+              prevExtrude.abs =
+                parseFloat(numSlice) - parseFloat(prevExtrude[argChar]);
+            } else {
+              prevExtrude.abs = parseFloat(numSlice);
+            }
+            isExtrusion = prevExtrude.abs > 0;
+            if (prevExtrude.abs < 0) {
+              prevRetract[extruder] = -1;
+              retract = -1;
+            } else if (prevExtrude.abs == 0) {
+              retract = 0;
+            } else if (prevExtrude.abs > 0 && prevRetract[extruder] < 0) {
+              prevRetract[extruder] = 0;
+              retract = 1;
+            } else {
+              retract = 0;
+            }
+            prevExtrude[argChar] = numSlice;
+
+            break;
+          case "f":
+            numSlice = args[j].slice(1);
+            lastF = numSlice;
+            break;
+          default:
+            break;
+        }
       }
-    }
-    if (!purge) {
-      layerCnt += 1;
+      if (dcExtrude && !assumeNonDC) {
+        isExtrusion = true;
+        prevExtrude.abs = Math.sqrt(
+          (prevX - x) * (prevX - x) + (prevY - y) * (prevY - y)
+        );
+      }
+      if (isExtrusion && retract == 0) {
+        volPerMM = Number(
+          prevExtrude.abs /
+            Math.sqrt((prevX - x) * (prevX - x) + (prevY - y) * (prevY - y))
+        );
+      }
+
+      // this code is repeated below :/
+      if (!model.getNthLayer(layerNum)) model.addLayer(new Layer());
+      model.getNthLayer(layerNum).addCommand(
+        new MoveCommand({
+          x: Number(x),
+          y: Number(y),
+          z: Number(z),
+          isExtrusion,
+          retract: Number(retract),
+          noMove: false,
+          extrusion: isExtrusion || retract ? Number(prevExtrude.abs) : 0,
+          extruder,
+          prevX: Number(prevX),
+          prevY: Number(prevY),
+          prevZ: Number(prevZ),
+          speed: Number(lastF),
+          gcodeLine: Number(i),
+          volPerMM: volPerMM || -1,
+        })
+      );
+      if (x) prevX = x;
+      if (y) prevY = y;
+    } else if (gcodeLines[i].match(/^(?:M82)/i)) {
+      extrudeRelative = false;
+    } else if (gcodeLines[i].match(/^(?:G91)/i)) {
+      extrudeRelative = true;
+    } else if (gcodeLines[i].match(/^(?:G90)/i)) {
+      extrudeRelative = false;
+    } else if (gcodeLines[i].match(/^(?:M83)/i)) {
+      extrudeRelative = true;
+    } else if (gcodeLines[i].match(/^(?:M101)/i)) {
+      dcExtrude = true;
+    } else if (gcodeLines[i].match(/^(?:M103)/i)) {
+      dcExtrude = false;
+    } else if (gcodeLines[i].match(/^(?:G92)/i)) {
+      const args = gcodeLines[i].split(/\s/);
+      let x;
+      let y;
+      let z;
+
+      for (let j = 0; j < args.length; j += 1) {
+        const argChar = args[j].charAt(0).toLowerCase();
+        switch (argChar) {
+          case "x":
+            x = args[j].slice(1);
+            break;
+          case "y":
+            y = args[j].slice(1);
+            break;
+          case "z":
+            z = args[j].slice(1);
+            prevZ = z;
+            break;
+          case "e":
+          case "a":
+          case "b":
+          case "c":
+            numSlice = parseFloat(args[j].slice(1)).toFixed(3);
+            extruder = argChar;
+            if (!extrudeRelative) prevExtrude[argChar] = 0;
+            else {
+              prevExtrude[argChar] = numSlice;
+            }
+            break;
+          default:
+            break;
+        }
+      }
+      if (!model.getNthLayer(layerNum)) model.addLayer(new Layer());
+      if (x && y && z) {
+        model.getNthLayer(layerNum).addCommand(
+          new MoveCommand({
+            x: parseFloat(x),
+            y: parseFloat(y),
+            z: parseFloat(z),
+            isExtrusion,
+            retract: parseFloat(retract),
+            noMove: true,
+            extrusion: 0,
+            extruder,
+            prevX: parseFloat(prevX),
+            prevY: parseFloat(prevY),
+            prevZ: parseFloat(prevZ),
+            speed: parseFloat(lastF),
+            gcodeLine: parseFloat(i),
+          })
+        );
+      }
+    } else if (gcodeLines[i].match(/^(?:G28)/i)) {
+      const args = gcodeLines[i].split(/\s/);
+      let x;
+      let y;
+      let z;
+      for (let j = 0; j < args.length; j++) {
+        const argChar = args[j].charAt(0).toLowerCase();
+        switch (argChar) {
+          case "x":
+            x = args[j].slice(1);
+            break;
+          case "y":
+            y = args[j].slice(1);
+            break;
+          case "z":
+            z = args[j].slice(1);
+            z = Number(z);
+            if (z === prevZ) break; // continue?;
+            if (zHeights.z) {
+              layerNum = zHeights[z];
+            } else {
+              layerNum = model.layers.length;
+              zHeights[z] = layerNum;
+            }
+            prevZ = z;
+            break;
+          default:
+            break;
+        }
+      }
+
+      // // G28 with no arguments
+      // if (args.length === 1) {
+      //   // need to init values to default here
+      // }
+
+      // if it's the first layerNum and G28 was without
+      if (layerNum === 0 && !z) {
+        z = 0;
+        if (zHeights.z) {
+          layerNum = zHeights[z];
+        } else {
+          layerNum = model.layers.length;
+          zHeights[z] = layerNum;
+        }
+        prevZ = z;
+      }
+      if (!model.getNthLayer(layerNum)) model.addLayer(new Layer());
+      model.getNthLayer(layerNum).addCommand(
+        new MoveCommand({
+          x: Number(x),
+          y: Number(y),
+          z: Number(z),
+          isExtrusion,
+          retract: Number(retract),
+          noMove: false,
+          extrusion: isExtrusion || retract ? Number(prevExtrude.abs) : 0,
+          extruder,
+          prevX: Number(prevX),
+          prevY: Number(prevY),
+          prevZ: Number(prevZ),
+          speed: Number(lastF),
+          gcodeLine: Number(i),
+        })
+      );
     }
   }
-};
+  console.log(JSON.stringify(model));
 
-const analyzeModel = function (model) {
-  let i;
-  let j;
+  return model;
+}
+
+// the default parameter only exists to provide type hints until we move to typescript
+export function analyzeModel(model = [new Model()]) {
   let x_ok = false;
   let y_ok = false;
-  let cmds;
   let tmp1 = 0;
   let tmp2 = 0;
   let speedIndex = 0;
   let type;
   let printTimeAdd = 0;
 
-  let max = {
+  const max = {
     x: undefined,
     y: undefined,
     z: undefined,
@@ -43,7 +308,7 @@ const analyzeModel = function (model) {
     volSpeed: undefined,
     extrSpeed: undefined,
   };
-  let min = {
+  const min = {
     x: undefined,
     y: undefined,
     z: undefined,
@@ -51,35 +316,30 @@ const analyzeModel = function (model) {
     volSpeed: undefined,
     extrSpeed: undefined,
   };
-  let modelSize = { x: undefined, y: undefined, z: undefined };
-  let filamentByLayer = {};
-  let filamentByExtruder = {};
+  const modelSize = { x: undefined, y: undefined, z: undefined };
+  const filamentByLayer = {};
+  const filamentByExtruder = {};
   let totalFilament = 0;
   let printTime = 0;
-  let printTimeByLayer = {};
+  const printTimeByLayer = {};
   let layerHeight = 0;
-  let layerCnt = 0;
-  let speeds = { extrude: [], retract: [], move: [] };
-  let speedsByLayer = { extrude: {}, retract: {}, move: {} };
+  const layerCnt = 0;
+  const speeds = { extrude: [], retract: [], move: [] };
+  const speedsByLayer = { extrude: {}, retract: {}, move: {} };
 
-  let volSpeeds = [];
-  let volSpeedsByLayer = {};
-  let extrusionSpeeds = [];
-  let extrusionSpeedsByLayer = {};
+  const volSpeeds = [];
+  const volSpeedsByLayer = {};
+  const extrusionSpeeds = [];
+  const extrusionSpeedsByLayer = {};
 
-  for (i = 0; i < model.length; i++) {
-    cmds = model[i];
+  for (let i = 0; i < model.layers.length; i++) {
+    const cmds = model.getNthLayer(i).commandsList;
     if (!cmds) continue;
-    for (j = 0; j < cmds.length; j++) {
-      x_ok = false;
-      y_ok = false;
-      if (
-        typeof cmds[j].x !== "undefined" &&
-        typeof cmds[j].prevX !== "undefined" &&
-        typeof cmds[j].extrude !== "undefined" &&
-        cmds[j].extrude &&
-        !isNaN(cmds[j].x)
-      ) {
+    for (let j = 0; j < cmds.length; j += 1) {
+      x_ok = false; // WTF are these?
+      y_ok = false; // WTF are these?
+
+      if (cmds[j].isExtrusion && !Number.isNaN(cmds[j].x)) {
         max.x =
           parseFloat(max.x) > parseFloat(cmds[j].x)
             ? parseFloat(max.x)
@@ -99,13 +359,7 @@ const analyzeModel = function (model) {
         x_ok = true;
       }
 
-      if (
-        typeof cmds[j].y !== "undefined" &&
-        typeof cmds[j].prevY !== "undefined" &&
-        typeof cmds[j].extrude !== "undefined" &&
-        cmds[j].extrude &&
-        !isNaN(cmds[j].y)
-      ) {
+      if (cmds[j].isExtrusion && !Number.isNaN(cmds[j].y)) {
         max.y =
           parseFloat(max.y) > parseFloat(cmds[j].y)
             ? parseFloat(max.y)
@@ -125,12 +379,7 @@ const analyzeModel = function (model) {
         y_ok = true;
       }
 
-      if (
-        typeof cmds[j].prevZ !== "undefined" &&
-        typeof cmds[j].extrude !== "undefined" &&
-        cmds[j].extrude &&
-        !isNaN(cmds[j].prevZ)
-      ) {
+      if (cmds[j].isExtrusion && !Number.isNaN(cmds[j].prevZ)) {
         max.z =
           parseFloat(max.z) > parseFloat(cmds[j].prevZ)
             ? parseFloat(max.z)
@@ -139,12 +388,11 @@ const analyzeModel = function (model) {
           parseFloat(min.z) < parseFloat(cmds[j].prevZ)
             ? parseFloat(min.z)
             : parseFloat(cmds[j].prevZ);
+
+        // WTF... no z_ok?
       }
 
-      if (
-        (typeof cmds[j].extrude !== "undefined" && cmds[j].extrude == true) ||
-        cmds[j].retract != 0
-      ) {
+      if (cmds[j].isExtrusion === true || cmds[j].retract !== 0) {
         totalFilament += cmds[j].extrusion;
         if (!filamentByLayer[cmds[j].prevZ]) filamentByLayer[cmds[j].prevZ] = 0;
         filamentByLayer[cmds[j].prevZ] += cmds[j].extrusion;
@@ -178,16 +426,16 @@ const analyzeModel = function (model) {
       }
 
       printTime += printTimeAdd;
-      if (typeof printTimeByLayer[cmds[j].prevZ] === "undefined") {
+      if (!printTimeByLayer[cmds[j].prevZ]) {
         printTimeByLayer[cmds[j].prevZ] = 0;
       }
       printTimeByLayer[cmds[j].prevZ] += printTimeAdd;
 
-      if (cmds[j].extrude && cmds[j].retract === 0) {
+      if (cmds[j].isExtrusion && cmds[j].retract === 0) {
         type = "extrude";
       } else if (cmds[j].retract !== 0) {
         type = "retract";
-      } else if (!cmds[j].extrude && cmds[j].retract === 0) {
+      } else if (!cmds[j].isExtrusion && cmds[j].retract === 0) {
         type = "move";
       } else {
         self.postMessage({ cmd: "unknown type of move" });
@@ -198,14 +446,14 @@ const analyzeModel = function (model) {
         speeds[type].push(cmds[j].speed);
         speedIndex = speeds[type].indexOf(cmds[j].speed);
       }
-      if (typeof speedsByLayer[type][cmds[j].prevZ] === "undefined") {
+      if (!speedsByLayer[type][cmds[j].prevZ]) {
         speedsByLayer[type][cmds[j].prevZ] = [];
       }
       if (speedsByLayer[type][cmds[j].prevZ].indexOf(cmds[j].speed) === -1) {
         speedsByLayer[type][cmds[j].prevZ][speedIndex] = cmds[j].speed;
       }
 
-      if (cmds[j].extrude && cmds[j].retract === 0 && x_ok && y_ok) {
+      if (cmds[j].isExtrusion && cmds[j].retract === 0 && x_ok && y_ok) {
         // we are extruding
         max.speed =
           parseFloat(max.speed) > parseFloat(cmds[j].speed)
@@ -232,7 +480,7 @@ const analyzeModel = function (model) {
           volSpeeds.push(volPerMM);
           volIndex = volSpeeds.indexOf(volPerMM);
         }
-        if (typeof volSpeedsByLayer[cmds[j].prevZ] === "undefined") {
+        if (!volSpeedsByLayer[cmds[j].prevZ]) {
           volSpeedsByLayer[cmds[j].prevZ] = [];
         }
         if (volSpeedsByLayer[cmds[j].prevZ].indexOf(volPerMM) === -1) {
@@ -255,7 +503,7 @@ const analyzeModel = function (model) {
           extrusionSpeeds.push(extrusionSpeed);
           volIndex = extrusionSpeeds.indexOf(extrusionSpeed);
         }
-        if (typeof extrusionSpeedsByLayer[cmds[j].prevZ] === "undefined") {
+        if (!extrusionSpeedsByLayer[cmds[j].prevZ]) {
           extrusionSpeedsByLayer[cmds[j].prevZ] = [];
         }
         if (
@@ -266,7 +514,6 @@ const analyzeModel = function (model) {
       }
     }
   }
-  purgeLayers(model, layerCnt);
 
   modelSize.x = Math.abs(max.x - min.x);
   modelSize.y = Math.abs(max.y - min.y);
@@ -283,7 +530,7 @@ const analyzeModel = function (model) {
     max.extrSpeed = min.extrSpeed + 1.0;
   }
 
-  return {
+  return new GCodeAnalysis({
     max,
     min,
     modelSize,
@@ -293,7 +540,7 @@ const analyzeModel = function (model) {
     printTime,
     layerHeight,
     layerCnt,
-    layerTotal: model.length,
+    layerTotal: model.layers.length,
     speeds,
     speedsByLayer,
     volSpeeds,
@@ -301,312 +548,5 @@ const analyzeModel = function (model) {
     printTimeByLayer,
     extrusionSpeeds,
     extrusionSpeedsByLayer,
-  };
-};
-
-const doParse = function (gcode) {
-  let argChar;
-  let numSlice;
-  let model = [];
-  let z_heights = {};
-  let sendLayer;
-  let sendLayerZ = 0;
-  let sendMultiLayer = [];
-  let sendMultiLayerZ = [];
-  let lastSend = 0;
-  //            console.time("parseGCode timer");
-  const reg = new RegExp(/^(?:G0|G1)\s/i);
-  const comment = new RegExp();
-  let j;
-  let layer = 0;
-  let extrude = false;
-  const prevRetract = {
-    e: 0,
-    a: 0,
-    b: 0,
-    c: 0,
-  };
-  let retract = 0;
-  let x;
-  let y;
-  let z = 0;
-  let f;
-  let prevZ = 0;
-  let prevX;
-  let prevY;
-  let lastF = 4000;
-  const prev_extrude = {
-    a: undefined,
-    b: undefined,
-    c: undefined,
-    e: undefined,
-    abs: undefined,
-  };
-  let extrudeRelative = false;
-  let volPerMM;
-  let extruder;
-  let dcExtrude = false;
-  let assumeNonDC = false;
-
-  for (var i = 0; i < gcode.length; i++) {
-    x = undefined;
-    y = undefined;
-    z = undefined;
-    volPerMM = undefined;
-    retract = 0;
-
-    extrude = false;
-    extruder = null;
-    prev_extrude.abs = 0;
-    gcode[i] = gcode[i].split(/[\(;]/)[0];
-
-    if (reg.test(gcode[i])) {
-      var args = gcode[i].split(/\s/);
-      for (j = 0; j < args.length; j++) {
-        switch ((argChar = args[j].charAt(0).toLowerCase())) {
-          case "x":
-            x = args[j].slice(1);
-            break;
-          case "y":
-            y = args[j].slice(1);
-            break;
-          case "z":
-            z = args[j].slice(1);
-            z = Number(z);
-            if (z == prevZ) continue;
-            //                            z = Number(z);
-            if (z_heights.hasOwnProperty(z)) {
-              layer = z_heights[z];
-            } else {
-              layer = model.length;
-              z_heights[z] = layer;
-            }
-            sendLayer = layer;
-            sendLayerZ = z;
-            prevZ = z;
-            break;
-          case "e":
-          case "a":
-          case "b":
-          case "c":
-            assumeNonDC = true;
-            extruder = argChar;
-            numSlice = parseFloat(args[j].slice(1)).toFixed(6);
-
-            if (!extrudeRelative) {
-              // absolute extrusion positioning
-              prev_extrude.abs =
-                parseFloat(numSlice) - parseFloat(prev_extrude[argChar]);
-            } else {
-              prev_extrude.abs = parseFloat(numSlice);
-            }
-            extrude = prev_extrude.abs > 0;
-            if (prev_extrude.abs < 0) {
-              prevRetract[extruder] = -1;
-              retract = -1;
-            } else if (prev_extrude.abs == 0) {
-              retract = 0;
-            } else if (prev_extrude.abs > 0 && prevRetract[extruder] < 0) {
-              prevRetract[extruder] = 0;
-              retract = 1;
-            } else {
-              retract = 0;
-            }
-            prev_extrude[argChar] = numSlice;
-
-            break;
-          case "f":
-            numSlice = args[j].slice(1);
-            lastF = numSlice;
-            break;
-          default:
-            break;
-        }
-      }
-      if (dcExtrude && !assumeNonDC) {
-        extrude = true;
-        prev_extrude.abs = Math.sqrt(
-          (prevX - x) * (prevX - x) + (prevY - y) * (prevY - y)
-        );
-      }
-      if (extrude && retract == 0) {
-        volPerMM = Number(
-          prev_extrude.abs /
-            Math.sqrt((prevX - x) * (prevX - x) + (prevY - y) * (prevY - y))
-        );
-      }
-      if (!model[layer]) model[layer] = [];
-      model[layer][model[layer].length] = {
-        x: Number(x),
-        y: Number(y),
-        z: Number(z),
-        extrude,
-        retract: Number(retract),
-        noMove: false,
-        extrusion: extrude || retract ? Number(prev_extrude.abs) : 0,
-        extruder,
-        prevX: Number(prevX),
-        prevY: Number(prevY),
-        prevZ: Number(prevZ),
-        speed: Number(lastF),
-        gcodeLine: Number(i),
-        volPerMM: typeof volPerMM === "undefined" ? -1 : volPerMM,
-      };
-      // {x: x, y: y, z: z, extrude: extrude, retract: retract, noMove: false, extrusion: (extrude||retract)?prev_extrude["abs"]:0, prevX: prevX, prevY: prevY, prevZ: prevZ, speed: lastF, gcodeLine: i};
-      if (typeof x !== "undefined") prevX = x;
-      if (typeof y !== "undefined") prevY = y;
-    } else if (gcode[i].match(/^(?:M82)/i)) {
-      extrudeRelative = false;
-    } else if (gcode[i].match(/^(?:G91)/i)) {
-      extrudeRelative = true;
-    } else if (gcode[i].match(/^(?:G90)/i)) {
-      extrudeRelative = false;
-    } else if (gcode[i].match(/^(?:M83)/i)) {
-      extrudeRelative = true;
-    } else if (gcode[i].match(/^(?:M101)/i)) {
-      dcExtrude = true;
-    } else if (gcode[i].match(/^(?:M103)/i)) {
-      dcExtrude = false;
-    } else if (gcode[i].match(/^(?:G92)/i)) {
-      var args = gcode[i].split(/\s/);
-      for (j = 0; j < args.length; j++) {
-        switch ((argChar = args[j].charAt(0).toLowerCase())) {
-          case "x":
-            x = args[j].slice(1);
-            break;
-          case "y":
-            y = args[j].slice(1);
-            break;
-          case "z":
-            z = args[j].slice(1);
-            prevZ = z;
-            break;
-          case "e":
-          case "a":
-          case "b":
-          case "c":
-            numSlice = parseFloat(args[j].slice(1)).toFixed(3);
-            extruder = argChar;
-            if (!extrudeRelative) prev_extrude[argChar] = 0;
-            else {
-              prev_extrude[argChar] = numSlice;
-            }
-            //                            prevZ = z;
-            break;
-          default:
-            break;
-        }
-      }
-      if (!model[layer]) model[layer] = [];
-      if (
-        typeof x !== "undefined" ||
-        typeof y !== "undefined" ||
-        typeof z !== "undefined"
-      ) {
-        model[layer][model[layer].length] = {
-          x: parseFloat(x),
-          y: parseFloat(y),
-          z: parseFloat(z),
-          extrude,
-          retract: parseFloat(retract),
-          noMove: true,
-          extrusion: 0,
-          extruder,
-          prevX: parseFloat(prevX),
-          prevY: parseFloat(prevY),
-          prevZ: parseFloat(prevZ),
-          speed: parseFloat(lastF),
-          gcodeLine: parseFloat(i),
-        };
-      }
-    } else if (gcode[i].match(/^(?:G28)/i)) {
-      var args = gcode[i].split(/\s/);
-      for (j = 0; j < args.length; j++) {
-        switch ((argChar = args[j].charAt(0).toLowerCase())) {
-          case "x":
-            x = args[j].slice(1);
-            break;
-          case "y":
-            y = args[j].slice(1);
-            break;
-          case "z":
-            z = args[j].slice(1);
-            z = Number(z);
-            if (z === prevZ) continue;
-            sendLayer = layer;
-            sendLayerZ = z; // }
-            if (z_heights.hasOwnProperty(z)) {
-              layer = z_heights[z];
-            } else {
-              layer = model.length;
-              z_heights[z] = layer;
-            }
-            prevZ = z;
-            break;
-          default:
-            break;
-        }
-      }
-      // G28 with no arguments
-      if (args.length == 1) {
-        // need to init values to default here
-      }
-      // if it's the first layer and G28 was without
-      if (layer == 0 && typeof z === "undefined") {
-        z = 0;
-        if (z_heights.hasOwnProperty(z)) {
-          layer = z_heights[z];
-        } else {
-          layer = model.length;
-          z_heights[z] = layer;
-        }
-        prevZ = z;
-      }
-      //                x=0, y=0,z=0,prevZ=0, extrude=false;
-      //                if(typeof(prevX) === 'undefined'){prevX=0;}
-      //                if(typeof(prevY) === 'undefined'){prevY=0;}
-
-      if (!model[layer]) model[layer] = [];
-      //                if(typeof(x) !== 'undefined' || typeof(y) !== 'undefined' ||typeof(z) !== 'undefined'||retract!=0)
-      model[layer][model[layer].length] = {
-        x: Number(x),
-        y: Number(y),
-        z: Number(z),
-        extrude,
-        retract: Number(retract),
-        noMove: false,
-        extrusion: extrude || retract ? Number(prev_extrude.abs) : 0,
-        extruder,
-        prevX: Number(prevX),
-        prevY: Number(prevY),
-        prevZ: Number(prevZ),
-        speed: Number(lastF),
-        gcodeLine: Number(i),
-      };
-      //                if(typeof(x) !== 'undefined' || typeof(y) !== 'undefined' ||typeof(z) !== 'undefined') model[layer][model[layer].length] = {x: x, y: y, z: z, extrude: extrude, retract: retract, noMove:false, extrusion: (extrude||retract)?prev_extrude["abs"]:0, prevX: prevX, prevY: prevY, prevZ: prevZ, speed: lastF, gcodeLine: parseFloat(i)};
-    }
-    if (typeof sendLayer !== "undefined") {
-      //                sendLayerToParent(sendLayer, sendLayerZ, i/gcode.length*100);
-      //                sendLayer = undefined;
-
-      if (i - lastSend > gcode.length * 0.02 && sendMultiLayer.length != 0) {
-        lastSend = i;
-        sendMultiLayer = [];
-        sendMultiLayerZ = [];
-      }
-      sendMultiLayer[sendMultiLayer.length] = sendLayer;
-      sendMultiLayerZ[sendMultiLayerZ.length] = sendLayerZ;
-      sendLayer = undefined;
-      sendLayerZ = undefined;
-    }
-  }
-  return model;
-};
-
-export function parseGCode(gcode) {
-  return doParse(gcode);
-}
-
-export function runAnalyze(model) {
-  return analyzeModel(model);
+  });
 }

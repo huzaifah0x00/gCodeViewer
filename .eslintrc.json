@@ -9,9 +9,11 @@
     "sourceType": "module"
   },
   "rules": {
+    "no-use-before-define": "error",
+    "no-implicit-globals": "error",
     "linebreak-style": ["error", "windows"],
     "max-len": ["error", { "code": 150 }],
     "no-undef": "error",
-    "import/extensions": "always"
+    "import/extensions": "off"
   }
 }

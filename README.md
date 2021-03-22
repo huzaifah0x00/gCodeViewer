@@ -1,4 +1,4 @@
-gCodeVisualizer is a web-based visual gcode viewer and analyzer. Available online at http://gcode.ws/
+GCodeAnalyzer is a node.js package for analyzing gcode files based on gcode.ws
 
 this Fork is a nodeJS version of the Gcode analyzer part.
 
@@ -7,11 +7,7 @@ this Fork is a nodeJS version of the Gcode analyzer part.
 1. install dependencies
 
 ```bash
-npm install
+npm install gcode-analyzer
 ```
 
 The future structure of this project isn't decided yet. 2. run the analyze.js script?
-
-```bash
-npm start
-```

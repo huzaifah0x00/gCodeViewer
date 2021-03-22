@@ -1,7 +1,7 @@
 {
   "name": "gcode-analyzer",
-  "version": "1.0.0",
-  "description": "GCodeAnalyzer - a node.js tool for analyzing gcode files",
+  "version": "0.0.1",
+  "description": "GCodeAnalyzer is a node.js package for analyzing gcode files based on gcode.ws",
   "main": "src/index.js",
   "type": "module",
   "scripts": {

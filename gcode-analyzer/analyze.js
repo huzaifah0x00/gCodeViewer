@@ -2,7 +2,7 @@ import { program } from "commander";
 import fs from "fs";
 import path from "path";
 import GCodeReader from "./GCodeReader.js";
-import { analyzeModel } from "./Worker.js";
+import { analyzeModel } from "./tmpnameuntilrefactor.js";
 
 program
   .requiredOption("-f, --file <path>", "input gcode file")

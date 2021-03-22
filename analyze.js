@@ -1,6 +1,6 @@
 import fs from "fs";
-import { analyzeModel } from "./Worker";
-import GCodeReader from "./GCodeReader";
+import { analyzeModel } from "./gcode-analyzer/tmpnameuntilrefactor";
+import GCodeReader from "./gcode-analyzer/GCodeReader";
 
 export default function analyzeGcode(gcodeFilePath) {
   const fileText = fs.readFileSync(gcodeFilePath, "utf-8");

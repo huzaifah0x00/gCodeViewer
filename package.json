@@ -1,8 +1,8 @@
 {
-  "name": "huza-gcodeviewer",
+  "name": "gcode-analyzer",
   "version": "1.0.0",
-  "description": "gCodeVisualizer - a web-based visual gcode viewer and analyzer.\r Available online at http://gcode.ws/",
-  "main": "src/analyze.js",
+  "description": "GCodeAnalyzer - a node.js tool for analyzing gcode files",
+  "main": "src/index.js",
   "type": "module",
   "scripts": {
     "start": "node src/analyze.js",

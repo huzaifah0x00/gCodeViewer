@@ -1,10 +1,13 @@
+/* eslint-disable prefer-destructuring */
 /**
  * User: hudbrog (hudbrog@gmail.com)
  * Date: 10/21/12
  * Time: 7:31 AM
  */
 
-import { parseGCode } from "./Worker.js";
+import zlib from "zlib";
+
+import { parseGCode } from "./tmpnameuntilrefactor.js";
 
 export default class GCodeReader {
   constructor() {
@@ -58,15 +61,16 @@ export default class GCodeReader {
       /CURA_PROFILE_STRING:((?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4}))/m
     );
     if (profileString) {
-      const raw = window.atob(profileString[1]);
+      const raw = Buffer.from(profileString[1], "base64").toString();
+
       const array = new Uint8Array(new ArrayBuffer(raw.length));
 
-      for (i = 0; i < raw.length; i++) {
+      for (let i = 0; i < raw.length; i += 1) {
         array[i] = raw.charCodeAt(i);
       }
-      const data = new Zlib.inflate(array.subarray(2, array.byteLength - 4));
+      const data = zlib.inflate(array.subarray(2, array.byteLength - 4));
       let msg;
-      for (i = 0; i < data.length; i += 1) {
+      for (let i = 0; i < data.length; i += 1) {
         msg += String.fromCharCode(data[i]);
       }
       const nozzle = msg.match(/nozzle_size\s*=\s*(\d*\.\d+)/m);

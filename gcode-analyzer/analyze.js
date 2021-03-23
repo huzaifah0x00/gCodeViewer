@@ -1,8 +1,8 @@
-import { program } from "commander";
-import fs from "fs";
-import path from "path";
-import GCodeReader from "./GCodeReader.js";
-import { analyzeModel } from "./tmpnameuntilrefactor.js";
+const { program } = require("commander");
+const fs = require("fs");
+const path = require("path");
+const GCodeReader = require("./GCodeReader.js");
+const { analyzeModel } = require("./tmpnameuntilrefactor.js");
 
 program
   .requiredOption("-f, --file <path>", "input gcode file")

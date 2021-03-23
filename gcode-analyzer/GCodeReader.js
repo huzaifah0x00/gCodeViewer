@@ -5,11 +5,11 @@
  * Time: 7:31 AM
  */
 
-import zlib from "zlib";
+const zlib = require("zlib");
 
-import { parseGCode } from "./tmpnameuntilrefactor.js";
+const { parseGCode } = require("./tmpnameuntilrefactor.js");
 
-export default class GCodeReader {
+module.exports = class GCodeReader {
   constructor() {
     this.slicer = "unknown";
     this.gCodeOptions = {
@@ -113,4 +113,4 @@ export default class GCodeReader {
     const lines = gcodeFileText.split(/\n/);
     return parseGCode(lines);
   }
-}
+};

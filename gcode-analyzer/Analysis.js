@@ -1,4 +1,4 @@
-export default class GCodeAnalysis {
+module.exports = class GCodeAnalysis {
   constructor({
     max,
     min,
@@ -36,4 +36,4 @@ export default class GCodeAnalysis {
     this.extrusionSpeeds = extrusionSpeeds;
     this.extrusionSpeedsByLayer = extrusionSpeedsByLayer;
   }
-}
+};

@@ -4,12 +4,12 @@
  * Time: 12:18 PM
  */
 
-import MoveCommand from "./Command.js";
-import Layer from "./Layer.js";
-import Model from "./Model.js";
-import GCodeAnalysis from "./Analysis.js";
+const MoveCommand = require("./Command.js");
+const Layer = require("./Layer.js");
+const Model = require("./Model.js");
+const GCodeAnalysis = require("./Analysis.js");
 
-export function parseGCode(gcodeLines) {
+module.exports.parseGCode = function parseGCode(gcodeLines) {
   let numSlice;
   const model = new Model();
   const zHeights = {};
@@ -285,13 +285,12 @@ export function parseGCode(gcodeLines) {
       );
     }
   }
-  console.log(JSON.stringify(model));
 
   return model;
-}
+};
 
 // the default parameter only exists to provide type hints until we move to typescript
-export function analyzeModel(model = [new Model()]) {
+module.exports.analyzeModel = function analyzeModel(model = [new Model()]) {
   let x_ok = false;
   let y_ok = false;
   let tmp1 = 0;
@@ -549,4 +548,4 @@ export function analyzeModel(model = [new Model()]) {
     extrusionSpeeds,
     extrusionSpeedsByLayer,
   });
-}
+};

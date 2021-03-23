@@ -1,4 +1,4 @@
-export default class Layer {
+module.exports = class Layer {
   constructor({ commandsList } = { commandsList: [] }) {
     this.commandsList = commandsList;
   }
@@ -6,4 +6,4 @@ export default class Layer {
   addCommand(command) {
     this.commandsList.push(command);
   }
-}
+};

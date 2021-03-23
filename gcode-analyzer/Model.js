@@ -1,6 +1,6 @@
-import Layer from "./Layer.js";
+const Layer = require("./Layer.js");
 
-export default class Model {
+module.exports = class Model {
   constructor(layers = [new Layer()]) {
     this.layers = layers;
   }
@@ -12,4 +12,4 @@ export default class Model {
   getNthLayer(layerNum) {
     return this.layers[layerNum];
   }
-}
+};

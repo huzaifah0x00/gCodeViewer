@@ -1,4 +1,4 @@
-export default class MoveCommand {
+module.exports = class MoveCommand {
   constructor({
     x,
     y,
@@ -31,4 +31,4 @@ export default class MoveCommand {
     this.speed = speed;
     this.gcodeLineNum = gcodeLineNum;
   }
-}
+};

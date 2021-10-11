@@ -10,4 +10,5 @@ this Fork is a nodeJS version of the Gcode analyzer part.
 npm install gcode-analyzer
 ```
 
-The future structure of this project isn't decided yet. 2. run the analyze.js script?
+The future structure of this project isn't decided yet.  
+2. run the analyze.js script?
